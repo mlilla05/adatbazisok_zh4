@@ -1,0 +1,65 @@
+SQL 1:
+SELECT DISTINCT nev, email, usernev, FoglalasokSzama
+FROM (
+    SELECT v.NEV AS nev, v.EMAIL as email, v.USERNEV as usernev, COUNT(f.UGYFEL_FK) OVER(PARTITION BY v.USERNEV) AS FoglalasokSzama
+    FROM Vendeg v
+    LEFT JOIN Foglalas f ON v.USERNEV = f.UGYFEL_FK
+) AS allekerdezes
+WHERE allekerdezes.FoglalasokSzama > 1;
+
+SQL 2:
+SELECT v.*
+FROM Vendeg v JOIN Foglalas f ON v.USERNEV = f.UGYFEL_FK
+                JOIN Szoba sz ON f.SZOBA_FK = sz.SZOBA_ID
+WHERE sz.FEROHELY = (
+                        SELECT MAX(FEROHELY)
+                        FROM Szoba
+                    )
+                    AND sz.KLIMAS LIKE 'i'
+
+SQL 3:
+SELECT DENSE_RANK() OVER(ORDER BY COUNT(*)) as 'sorszám', v.USERNEV, v.NEV, COUNT(*) AS 'db'
+FROM Vendeg v JOIN Foglalas f ON v.USERNEV = f.UGYFEL_FK
+GROUP BY v.USERNEV, v.NEV
+
+SQL 4:
+SELECT iif(GROUPING_ID(szh.SZALLAS_NEV)=1, 'Vegosszeg', szh.SZALLAS_NEV) as 'Szallas_nev',
+        sz.POTAGY,
+        SUM(f.FELNOTT_SZAM+f.GYERMEK_SZAM) 'Fo'
+FROM szallashely szh JOIN Szoba sz ON szh.SZALLAS_ID = sz.SZALLAS_FK
+                    JOIN Foglalas f ON f.SZOBA_FK = sz.SZOBA_ID
+GROUP BY rollup(szh.SZALLAS_NEV, sz.POTAGY)
+
+SQL 5:
+SELECT
+    COUNT(DISTINCT FEROHELY) AS 'Kulonbozo_Ertekek',
+    MIN(FEROHELY) AS 'Min_Ferohely',
+    MAX(FEROHELY) AS 'Max_Ferohely',
+    AVG(FEROHELY) AS 'Atlag_Ferohely',
+    (COUNT(FEROHELY) * 100.0 / COUNT(*)) AS 'Not_Null_Szazalek',
+    ((COUNT(*) - COUNT(FEROHELY)) * 100.0 / COUNT(*)) AS 'Null_Szazalek'
+FROM Szoba;
+
+Redis:
+HSET IRO:1 ID 1 nev "János" nemzetiseg "Magyar"
+HSET IRO:2 ID 2 nev "Anna" nemzetiseg "Magyar"
+HSET KONYV:1 ID 1 cim "Az elveszett világ" mufaj "Kaland" IRO_ID 1
+HSET KONYV:2 ID 2 cim "Téli mese" mufaj "Romantikus" IRO_ID 2
+
+Cassandra:
+CREATE TABLE STUDENT (
+    ID INT PRIMARY KEY,
+    Nev TEXT,
+    Teljesitett_felevek LIST<int>,
+    Eredmenyek MAP<int, float>,
+    Nyelvtudas SET<text>
+);
+INSERT INTO STUDENT (ID, Nev, Teljesitett_felevek, Eredmenyek, Nyelvtudas)
+VALUES (1, 'Kiss Péter', [1, 2, 3], {1: 3.00, 2: 4.55, 3: 4.10}, {'Angol', 'Német'});
+INSERT INTO STUDENT (ID, Nev, Teljesitett_felevek, Eredmenyek, Nyelvtudas)
+VALUES (2, 'Nagy Anna', [1, 2, 3, 4], {1: 2.50, 2: 3.75, 3: 3.90, 4: 4.50}, {'Francia', 'Olasz', 'Spanyol'});
+
+Neo4j:
+MATCH (tom:Person {name: 'Tom Hanks'})-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(p:Person)
+WHERE p.name <> 'Tom Hanks'
+RETURN DISTINCT p.name AS Actor
